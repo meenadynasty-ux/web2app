@@ -1,0 +1,64 @@
+name: AppForge Native Build Engine
+
+on:
+  workflow_dispatch:
+    inputs:
+      WEBSITE_URL:
+        description: 'Target Website URL'
+        required: true
+        type: string
+      APP_NAME:
+        description: 'Application Name'
+        required: true
+        type: string
+      PACKAGE_NAME:
+        description: 'Android Package Name'
+        required: true
+        type: string
+      THEME_COLOR:
+        description: 'Primary Theme Color (Hex)'
+        required: true
+        type: string
+
+jobs:
+  build-native-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Base Template
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Inject Dynamic Configurations
+        run: |
+          echo "Injecting variables into Android project..."
+          # Replace placeholders in string resources
+          sed -i "s|<string name=\"app_name\">.*</string>|<string name=\"app_name\">${{ github.event.inputs.APP_NAME }}</string>|g" app/src/main/res/values/strings.xml
+          sed -i "s|<string name=\"target_url\">.*</string>|<string name=\"target_url\">${{ github.event.inputs.WEBSITE_URL }}</string>|g" app/src/main/res/values/strings.xml
+          
+          # Replace package name in build.gradle.kts and Manifest
+          sed -i "s|applicationId = \".*\"|applicationId = \"${{ github.event.inputs.PACKAGE_NAME }}\"|g" app/build.gradle.kts
+          
+          echo "Configuration successfully injected."
+
+      - name: Make Gradle Executable
+        run: chmod +x ./gradlew
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon
+
+      # SECURITY: In production, sign the APK here using GitHub Secrets for Keystore.
+      # We are uploading the unsigned/debug release for MVP testing.
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppForge-Generated-APK
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 1
