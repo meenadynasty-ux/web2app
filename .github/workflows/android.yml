@@ -20,8 +20,10 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
-    - name: Fix AAPT2 Path for GitHub
-      run: sed -i '/aapt2/d' gradle.properties || true
+    - name: Force Remove Termux AAPT2
+      run: |
+        find . -type f \( -name "*.properties" -o -name "*.gradle*" -o -name "*.kts" \) -exec sed -i '/aapt2/Id' {} +
+        echo "android.aapt2FromMavenOverride=" >> gradle.properties
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
